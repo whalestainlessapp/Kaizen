@@ -80,7 +80,7 @@
   }
 
   function fetchUserData(uid) {
-    return fetch(`https://script.google.com/macros/s/AKfycbwcvPEJEO2--7gyp4KGvEU4eQE_ZIk1SFrl1_tq_A1WE3YU4zFQ_WcCNpCWbxVyc1hw/exec?userId=${uid}`)
+    return fetch(`https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec?userId=${uid}`)
       .then(res => res.json())
       .catch(err => { console.error(err); showError("โหลดข้อมูล user ไม่ได้"); });
   }
@@ -130,7 +130,7 @@
       empCode: document.getElementById("empCode").value
     };
 
-    fetch("https://script.google.com/macros/s/AKfycbwcvPEJEO2--7gyp4KGvEU4eQE_ZIk1SFrl1_tq_A1WE3YU4zFQ_WcCNpCWbxVyc1hw/exec", {
+    fetch("https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
