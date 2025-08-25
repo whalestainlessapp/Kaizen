@@ -80,7 +80,7 @@
   }
 
   function fetchUserData(uid) {
-    return fetch(`https://script.google.com/macros/s/AKfycbwd_Ek8YmweCsqptuzTAMxZhHzN2NyBgX2Rc4KFtc6kjRvvXXKvWZuLlw8auDMYrQKT/exec?userId=${uid}`)
+    return fetch(`https://script.google.com/macros/s/AKfycbwcvPEJEO2--7gyp4KGvEU4eQE_ZIk1SFrl1_tq_A1WE3YU4zFQ_WcCNpCWbxVyc1hw/exec?userId=${uid}`)
       .then(res => res.json())
       .catch(err => { console.error(err); showError("โหลดข้อมูล user ไม่ได้"); });
   }
