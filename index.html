@@ -1,56 +1,195 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>ส่งงานไคเซ็น</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; }
+    input[type=text], input[type=date], textarea, select { width:100%; padding:12px 14px; margin:8px 0; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; }
+    textarea { min-height: 100px; }
+    button { width:100%; background:#4CAF50; color:#fff; padding:14px 16px; margin-top:8px; border:0; border-radius:6px; cursor:pointer; }
+    button:hover { background:#3e9a43; }
+    label { font-weight:600; }
+    .row { display:grid; gap:12px; }
+  </style>
 </head>
 <body>
-  <h2>ฟอร์มส่งงานไคเซ็น</h2>
-  <form id="kaizenForm">
-    <input type="text" id="jobId" placeholder="Job ID"><br>
-    <input type="date" id="date"><br>
-    <input type="text" id="topic" placeholder="เรื่องที่ส่งไคเซ็น"><br>
-    <input type="text" id="location" placeholder="สถานที่"><br>
-    <input type="text" id="group5s" placeholder="กลุ่ม 5ส."><br>
-    <textarea id="problemDetail" placeholder="รายละเอียดปัญหา"></textarea><br>
-    <input type="file" id="beforeImage"><br><br>
+  <h2>ส่งงานไคเซ็น</h2>
 
-    <button type="submit">บันทึก</button>
+  <form id="jobForm">
+    <div class="row">
+      <label>Job ID</label>
+      <input type="text" id="jobId" placeholder="เช่น KZ-2024-001" />
+
+      <label>วันที่แจ้งทำ</label>
+      <input type="date" id="reportDate" required />
+
+      <label>เรื่องที่ส่งไคเซ็น</label>
+      <input type="text" id="topic" required placeholder="หัวข้อไคเซ็น" />
+
+      <label>แผนก</label>
+      <input type="text" id="department" readonly />
+
+      <label>ผู้แจ้ง</label>
+      <input type="text" id="reporterName" readonly />
+
+      <label>รหัสพนักงาน</label>
+      <input type="text" id="empId" readonly />
+
+      <label>สถานที่</label>
+      <input type="text" id="location" required />
+
+      <label>กลุ่ม 5ส.</label>
+      <select id="group5s" required>
+        <option value="">-- เลือกกลุ่ม --</option>
+        <option>สะสาง</option>
+        <option>สะดวก</option>
+        <option>สะอาด</option>
+        <option>สุขลักษณะ</option>
+        <option>สร้างนิสัย</option>
+      </select>
+
+      <label>รายละเอียดปัญหา</label>
+      <textarea id="problemDetail" required></textarea>
+
+      <label>รูปรายละเอียดก่อนทำ</label>
+      <input type="file" id="beforeImage" accept="image/*" />
+
+      <hr/>
+
+      <label>รายละเอียดหลังแก้ไข</label>
+      <textarea id="afterDetail"></textarea>
+
+      <label>รูปหลังทำ</label>
+      <input type="file" id="afterImage" accept="image/*" />
+    </div>
+
+    <button type="submit">ส่งข้อมูล</button>
   </form>
 
   <script>
-    let uid = "";
+    const WEB_APP_URL = 'PUT_YOUR_WEBAPP_URL_HERE'; // URL จาก Deploy ของ Apps Script
+    const LIFF_ID = '2006299650-BRAGALa6';
 
-    async function main() {
-      await liff.init({ liffId: "YOUR_LIFF_ID" });
-      const profile = await liff.getProfile();
-      uid = profile.userId;
+    let uid = '', displayName = '', pictureUrl = '';
+
+    function showLoading(title='กำลังส่งข้อมูล...') {
+      Swal.fire({ title, allowOutsideClick:false, didOpen: () => Swal.showLoading() });
+    }
+    function showError(msg) { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: msg || 'โปรดลองใหม่' }); }
+    function showSuccess() { Swal.fire({ icon:'success', title:'สำเร็จ', text:'บันทึกเรียบร้อย' }).then(()=> liff.closeWindow()); }
+
+    function fileToBase64(file) {
+      if (!file) return Promise.resolve({base64:'', name:'', type:''});
+      return new Promise((resolve,reject)=>{
+        const fr = new FileReader();
+        fr.onload = () => {
+          const base64 = (fr.result || '').toString().split(',')[1] || '';
+          resolve({ base64, name: file.name, type: file.type || 'image/jpeg' });
+        };
+        fr.onerror = reject;
+        fr.readAsDataURL(file);
+      });
     }
 
-    main();
+    async function fetchUserDataByUid(uid) {
+      const url = WEB_APP_URL + '?userId=' + encodeURIComponent(uid);
+      const res = await fetch(url);
+      const data = await res.json().catch(()=>({}));
+      if (data?.ok && data.found) return data;
+      return null;
+    }
 
-    document.getElementById("kaizenForm").addEventListener("submit", async (e) => {
+    // init LIFF + เติมข้อมูลผู้ใช้
+    (async function init() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const profile = await liff.getProfile();
+        uid = profile.userId;
+        displayName = profile.displayName || '';
+        pictureUrl = profile.pictureUrl || '';
+
+        // เติมชื่อชั่วคราว
+        document.getElementById('reporterName').value = displayName;
+
+        // lookup จาก userdata
+        const u = await fetchUserDataByUid(uid);
+        if (u) {
+          document.getElementById('department').value = u.department || '';
+          document.getElementById('reporterName').value = u.reporterName || displayName;
+          document.getElementById('empId').value = u.empId || '';
+        } else {
+          // ถ้าไม่พบข้อมูล ให้แจ้งเตือนและปิด
+          await Swal.fire({ icon:'warning', title:'กรุณาลงทะเบียน', text:'ไม่พบข้อมูลในระบบ (userdata)' });
+          liff.closeWindow();
+        }
+      } catch (err) {
+        console.error(err);
+        showError('ไม่สามารถเริ่ม LIFF ได้');
+      }
+    })();
+
+    document.getElementById('jobForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      try {
+        showLoading();
 
-      const formData = {
-        jobId: document.getElementById("jobId").value,
-        date: document.getElementById("date").value,
-        topic: document.getElementById("topic").value,
-        location: document.getElementById("location").value,
-        group5s: document.getElementById("group5s").value,
-        problemDetail: document.getElementById("problemDetail").value,
-        beforeImage: document.getElementById("beforeImage").value, // base64 ถ้าอยากอัพไฟล์จริงต้องทำเพิ่ม
-        uid: uid
-      };
+        const before = await fileToBase64(document.getElementById('beforeImage').files[0]);
+        const after  = await fileToBase64(document.getElementById('afterImage').files[0]);
 
-      const response = await fetch("YOUR_WEBAPP_URL", {
-        method: "POST",
-        body: JSON.stringify(formData),
-        headers: { "Content-Type": "application/json" }
-      });
+        const payload = {
+          jobId: document.getElementById('jobId').value.trim(),
+          reportDate: document.getElementById('reportDate').value,
+          topic: document.getElementById('topic').value.trim(),
+          department: document.getElementById('department').value,
+          reporterName: document.getElementById('reporterName').value,
+          empId: document.getElementById('empId').value,
+          location: document.getElementById('location').value.trim(),
+          group5s: document.getElementById('group5s').value,
+          problemDetail: document.getElementById('problemDetail').value.trim(),
+          afterDetail: document.getElementById('afterDetail').value.trim(),
+          uid,
+          displayName,
+          pictureUrl,
 
-      const result = await response.json();
-      alert("บันทึกสำเร็จ!");
+          // รูปก่อนทำ
+          beforeBase64: before.base64,
+          beforeFileName: before.name,
+          beforeMimeType: before.type,
+
+          // รูปหลังทำ
+          afterBase64: after.base64,
+          afterFileName: after.name,
+          afterMimeType: after.type
+        };
+
+        // ใช้ mode 'cors' ถ้า web app เปิดสิทธิ Anyone
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        // ถ้าโดน CORS ให้สลับเป็น mode: 'no-cors' (จะอ่าน response ไม่ได้ แต่บันทึกได้)
+        if (!res.ok) {
+          // fallback
+          await fetch(WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        showSuccess();
+      } catch (err) {
+        console.error(err);
+        showError(err?.message || 'ส่งข้อมูลไม่สำเร็จ');
+      }
     });
   </script>
 </body>
