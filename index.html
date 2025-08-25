@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ส่งงานไคเซ็น</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <h2>ฟอร์มส่งงานไคเซ็น</h2>
+  <form id="kaizenForm">
+    <input type="text" id="jobId" placeholder="Job ID"><br>
+    <input type="date" id="date"><br>
+    <input type="text" id="topic" placeholder="เรื่องที่ส่งไคเซ็น"><br>
+    <input type="text" id="location" placeholder="สถานที่"><br>
+    <input type="text" id="group5s" placeholder="กลุ่ม 5ส."><br>
+    <textarea id="problemDetail" placeholder="รายละเอียดปัญหา"></textarea><br>
+    <input type="file" id="beforeImage"><br><br>
+
+    <button type="submit">บันทึก</button>
+  </form>
+
+  <script>
+    let uid = "";
+
+    async function main() {
+      await liff.init({ liffId: "YOUR_LIFF_ID" });
+      const profile = await liff.getProfile();
+      uid = profile.userId;
+    }
+
+    main();
+
+    document.getElementById("kaizenForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = {
+        jobId: document.getElementById("jobId").value,
+        date: document.getElementById("date").value,
+        topic: document.getElementById("topic").value,
+        location: document.getElementById("location").value,
+        group5s: document.getElementById("group5s").value,
+        problemDetail: document.getElementById("problemDetail").value,
+        beforeImage: document.getElementById("beforeImage").value, // base64 ถ้าอยากอัพไฟล์จริงต้องทำเพิ่ม
+        uid: uid
+      };
+
+      const response = await fetch("YOUR_WEBAPP_URL", {
+        method: "POST",
+        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const result = await response.json();
+      alert("บันทึกสำเร็จ!");
+    });
+  </script>
+</body>
+</html>
