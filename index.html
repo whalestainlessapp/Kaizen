@@ -1,196 +1,168 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>ส่งงานไคเซ็น</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>แบบฟอร์ม Kaizen</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 24px; }
-    input[type=text], input[type=date], textarea, select { width:100%; padding:12px 14px; margin:8px 0; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; }
-    textarea { min-height: 100px; }
-    button { width:100%; background:#4CAF50; color:#fff; padding:14px 16px; margin-top:8px; border:0; border-radius:6px; cursor:pointer; }
-    button:hover { background:#3e9a43; }
-    label { font-weight:600; }
-    .row { display:grid; gap:12px; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input[type=text], input[type=date], textarea, select {
+      width: 100%; padding: 12px 20px; margin: 8px 0;
+      border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+    }
+    button {
+      width: 100%; background-color: #4CAF50; color: white;
+      padding: 14px 20px; margin: 8px 0; border: none;
+      border-radius: 4px; cursor: pointer;
+    }
+    button:hover { background-color: #45a049; }
+    h1 { text-align: center; }
+    label { font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>ส่งงานไคเซ็น</h2>
 
-  <form id="jobForm">
-    <div class="row">
-      <label>Job ID</label>
-      <input type="text" id="jobId" placeholder="เช่น KZ-2024-001" />
+<h1>ส่งงานไคเซ็น</h1>
+<form id="kaizenForm">
 
-      <label>วันที่แจ้งทำ</label>
-      <input type="date" id="reportDate" required />
+  <label for="dueDate">วันที่แจ้งทำ:</label>
+  <input type="date" id="dueDate" name="dueDate" required>
 
-      <label>เรื่องที่ส่งไคเซ็น</label>
-      <input type="text" id="topic" required placeholder="หัวข้อไคเซ็น" />
+  <label for="title">เรื่องที่ส่งไคเซ็น:</label>
+  <input type="text" id="title" name="title" required>
 
-      <label>แผนก</label>
-      <input type="text" id="department" readonly />
+  <label for="location">สถานที่:</label>
+  <input type="text" id="location" name="location" required>
 
-      <label>ผู้แจ้ง</label>
-      <input type="text" id="reporterName" readonly />
+  <label for="group5s">กลุ่ม 5ส.:</label>
+  <input type="text" id="group5s" name="group5s" required>
 
-      <label>รหัสพนักงาน</label>
-      <input type="text" id="empId" readonly />
+  <label for="problemDetail">รายละเอียดปัญหา:</label>
+  <textarea id="problemDetail" name="problemDetail" rows="4" required></textarea>
 
-      <label>สถานที่</label>
-      <input type="text" id="location" required />
+  <label for="imageUpload">รูปรายละเอียดก่อนทำ:</label>
+  <input type="file" id="imageUpload" accept="image/*">
 
-      <label>กลุ่ม 5ส.</label>
-      <select id="group5s" required>
-        <option value="">-- เลือกกลุ่ม --</option>
-        <option>สะสาง</option>
-        <option>สะดวก</option>
-        <option>สะอาด</option>
-        <option>สุขลักษณะ</option>
-        <option>สร้างนิสัย</option>
-      </select>
+  <hr>
 
-      <label>รายละเอียดปัญหา</label>
-      <textarea id="problemDetail" required></textarea>
+  <label for="afterDetail">รายละเอียดหลังแก้ไข:</label>
+  <textarea id="afterDetail" name="afterDetail" rows="4"></textarea>
 
-      <label>รูปรายละเอียดก่อนทำ</label>
-      <input type="file" id="beforeImage" accept="image/*" />
+  <label for="afterImageUpload">รูปหลังทำ:</label>
+  <input type="file" id="afterImageUpload" accept="image/*">
 
-      <hr/>
+  <!-- hidden field -->
+  <input type="hidden" id="department" name="department">
+  <input type="hidden" id="reporterName" name="reporterName">
+  <input type="hidden" id="empCode" name="empCode">
 
-      <label>รายละเอียดหลังแก้ไข</label>
-      <textarea id="afterDetail"></textarea>
+  <button type="submit">ส่งข้อมูล</button>
+</form>
 
-      <label>รูปหลังทำ</label>
-      <input type="file" id="afterImage" accept="image/*" />
-    </div>
+<script>
+  let userId, displayName, pictureUrl;
 
-    <button type="submit">ส่งข้อมูล</button>
-  </form>
+  function showLoading() {
+    Swal.fire({ title: 'กำลังส่งข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  }
+  function showSuccess(jobId) {
+    Swal.fire({
+      title: 'สำเร็จ',
+      text: 'บันทึกข้อมูลแล้ว (JobID: ' + jobId + ')',
+      icon: 'success',
+      confirmButtonText: 'ปิด'
+    }).then(() => liff.closeWindow());
+  }
+  function showError(msg) {
+    Swal.fire({ title: 'ผิดพลาด', text: msg, icon: 'error', confirmButtonText: 'ตกลง' });
+  }
 
-  <script>
-    const WEB_APP_URL = 'PUT_YOUR_WEBAPP_URL_HERE'; // URL จาก Deploy ของ Apps Script
-    const LIFF_ID = '2006299650-BRAGALa6';
+  function fetchUserData(uid) {
+    return fetch(`https://script.google.com/macros/s/AKfycbwd_Ek8YmweCsqptuzTAMxZhHzN2NyBgX2Rc4KFtc6kjRvvXXKvWZuLlw8auDMYrQKT/exec?userId=${uid}`)
+      .then(res => res.json())
+      .catch(err => { console.error(err); showError("โหลดข้อมูล user ไม่ได้"); });
+  }
 
-    let uid = '', displayName = '', pictureUrl = '';
+  document.getElementById("kaizenForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    showLoading();
 
-    function showLoading(title='กำลังส่งข้อมูล...') {
-      Swal.fire({ title, allowOutsideClick:false, didOpen: () => Swal.showLoading() });
-    }
-    function showError(msg) { Swal.fire({ icon:'error', title:'เกิดข้อผิดพลาด', text: msg || 'โปรดลองใหม่' }); }
-    function showSuccess() { Swal.fire({ icon:'success', title:'สำเร็จ', text:'บันทึกเรียบร้อย' }).then(()=> liff.closeWindow()); }
+    const beforeFile = document.getElementById("imageUpload").files[0];
+    const afterFile = document.getElementById("afterImageUpload").files[0];
 
-    function fileToBase64(file) {
-      if (!file) return Promise.resolve({base64:'', name:'', type:''});
-      return new Promise((resolve,reject)=>{
-        const fr = new FileReader();
-        fr.onload = () => {
-          const base64 = (fr.result || '').toString().split(',')[1] || '';
-          resolve({ base64, name: file.name, type: file.type || 'image/jpeg' });
+    const encodeFile = (file) => {
+      return new Promise((resolve) => {
+        if (!file) return resolve({ base64: "", name: "", type: "" });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          resolve({ base64: reader.result.split(',')[1], name: file.name, type: file.type });
         };
-        fr.onerror = reject;
-        fr.readAsDataURL(file);
+        reader.readAsDataURL(file);
       });
-    }
+    };
 
-    async function fetchUserDataByUid(uid) {
-      const url = WEB_APP_URL + '?userId=' + encodeURIComponent(uid);
-      const res = await fetch(url);
-      const data = await res.json().catch(()=>({}));
-      if (data?.ok && data.found) return data;
-      return null;
-    }
+    const beforeImg = await encodeFile(beforeFile);
+    const afterImg = await encodeFile(afterFile);
 
-    // init LIFF + เติมข้อมูลผู้ใช้
-    (async function init() {
-      try {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) { liff.login(); return; }
-        const profile = await liff.getProfile();
-        uid = profile.userId;
-        displayName = profile.displayName || '';
-        pictureUrl = profile.pictureUrl || '';
+    const data = {
+      dueDate: document.getElementById("dueDate").value,
+      title: document.getElementById("title").value,
+      location: document.getElementById("location").value,
+      group5s: document.getElementById("group5s").value,
+      problemDetail: document.getElementById("problemDetail").value,
 
-        // เติมชื่อชั่วคราว
-        document.getElementById('reporterName').value = displayName;
+      beforeFileName: beforeImg.name,
+      beforeMimeType: beforeImg.type,
+      beforeFileData: beforeImg.base64,
 
-        // lookup จาก userdata
-        const u = await fetchUserDataByUid(uid);
-        if (u) {
-          document.getElementById('department').value = u.department || '';
-          document.getElementById('reporterName').value = u.reporterName || displayName;
-          document.getElementById('empId').value = u.empId || '';
-        } else {
-          // ถ้าไม่พบข้อมูล ให้แจ้งเตือนและปิด
-          await Swal.fire({ icon:'warning', title:'กรุณาลงทะเบียน', text:'ไม่พบข้อมูลในระบบ (userdata)' });
-          liff.closeWindow();
+      afterDetail: document.getElementById("afterDetail").value,
+      afterFileName: afterImg.name,
+      afterMimeType: afterImg.type,
+      afterFileData: afterImg.base64,
+
+      userId: userId,
+      displayName: displayName,
+      pictureUrl: pictureUrl,
+      department: document.getElementById("department").value,
+      reporterName: document.getElementById("reporterName").value,
+      empCode: document.getElementById("empCode").value
+    };
+
+    fetch("YOUR_GAS_WEBAPP_URL", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.status === "success") showSuccess(res.jobId);
+      else showError(res.message || "เกิดข้อผิดพลาด");
+    })
+    .catch(err => showError(err));
+  });
+
+  liff.init({ liffId: "2006299650-BRAGALa6" })
+    .then(() => {
+      if (!liff.isLoggedIn()) liff.login();
+      else return liff.getProfile();
+    })
+    .then(profile => {
+      userId = profile.userId;
+      displayName = profile.displayName;
+      pictureUrl = profile.pictureUrl;
+
+      fetchUserData(userId).then(data => {
+        if (data) {
+          document.getElementById("department").value = data.department || "";
+          document.getElementById("reporterName").value = data.reporterName || displayName;
+          document.getElementById("empCode").value = data.empCode || "";
         }
-      } catch (err) {
-        console.error(err);
-        showError('ไม่สามารถเริ่ม LIFF ได้');
-      }
-    })();
+      });
+    })
+    .catch(err => console.error(err));
+</script>
 
-    document.getElementById('jobForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        showLoading();
-
-        const before = await fileToBase64(document.getElementById('beforeImage').files[0]);
-        const after  = await fileToBase64(document.getElementById('afterImage').files[0]);
-
-        const payload = {
-          jobId: document.getElementById('jobId').value.trim(),
-          reportDate: document.getElementById('reportDate').value,
-          topic: document.getElementById('topic').value.trim(),
-          department: document.getElementById('department').value,
-          reporterName: document.getElementById('reporterName').value,
-          empId: document.getElementById('empId').value,
-          location: document.getElementById('location').value.trim(),
-          group5s: document.getElementById('group5s').value,
-          problemDetail: document.getElementById('problemDetail').value.trim(),
-          afterDetail: document.getElementById('afterDetail').value.trim(),
-          uid,
-          displayName,
-          pictureUrl,
-
-          // รูปก่อนทำ
-          beforeBase64: before.base64,
-          beforeFileName: before.name,
-          beforeMimeType: before.type,
-
-          // รูปหลังทำ
-          afterBase64: after.base64,
-          afterFileName: after.name,
-          afterMimeType: after.type
-        };
-
-        // ใช้ mode 'cors' ถ้า web app เปิดสิทธิ Anyone
-        const res = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        // ถ้าโดน CORS ให้สลับเป็น mode: 'no-cors' (จะอ่าน response ไม่ได้ แต่บันทึกได้)
-        if (!res.ok) {
-          // fallback
-          await fetch(WEB_APP_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-        }
-
-        showSuccess();
-      } catch (err) {
-        console.error(err);
-        showError(err?.message || 'ส่งข้อมูลไม่สำเร็จ');
-      }
-    });
-  </script>
 </body>
 </html>
