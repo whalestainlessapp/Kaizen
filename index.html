@@ -175,15 +175,16 @@
       pictureUrl = profile.pictureUrl;
 
       fetchUserData(userId).then(data => {
-        if (data && data.status === "success") {
-          document.getElementById("department").value   = data.department || "";
-          document.getElementById("reporterName").value = data.reporterName || displayName;
-          document.getElementById("empCode").value      = data.empCode || "";
-        } else {
-          showError(data.message || "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน");
-          liff.closeWindow();
-        }
-      });
+  if (data && data.status === "success") {
+    document.getElementById("department").value   = data.department || "";
+    document.getElementById("reporterName").value = data.reporterName || displayName;
+    document.getElementById("empCode").value      = data.empCode || "";
+  } else {
+    showError(data.message || "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน");
+    document.querySelector("button[type=submit]").disabled = true; // ปิดปุ่มส่ง
+  }
+});
+
     })
     .catch(err => console.error(err));
 </script>
