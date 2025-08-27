@@ -97,7 +97,8 @@ window.addEventListener("DOMContentLoaded", () => {
   function showSuccess(jobId) {
     Swal.fire({
       title: 'สำเร็จ',
-      text: 'บันทึกข้อมูลแล้ว (JobID: ' + jobId + ')',
+      text: 'บันทึกข้อมูลแล้ว 
+        (ยินดีด้วย คุณได้คะแนนสร้างสรรค์ 1 คะแนน &#128512;)',
       icon: 'success',
       confirmButtonText: 'ปิด'
     }).then(() => liff.closeWindow());
@@ -191,7 +192,7 @@ window.addEventListener("DOMContentLoaded", () => {
   } else {
     showError(data.message || "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน");
     document.querySelector("button[type=submit]").disabled = true; // ปิดปุ่มส่ง
-  }
+  }.then(() => liff.closeWindow());
 });
 
     })
