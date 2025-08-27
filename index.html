@@ -192,7 +192,7 @@ window.addEventListener("DOMContentLoaded", () => {
   } else {
     showError(data.message || "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน");
     document.querySelector("button[type=submit]").disabled = true; // ปิดปุ่มส่ง
-  }.then(() => liff.closeWindow());
+  }.then(() => liff.closeWindow());}
 });
 
     })
