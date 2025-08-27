@@ -141,14 +141,21 @@
       })
       .catch(err => { 
         console.error('Fetch error:', err); 
-        showError("โหลดข้อมูล user ไม่ได้: " + err.message);
-        return null;
+        // ไม่ต้อง showError ที่นี่ เพราะจะ handle ที่ .then() ข้างล่าง
+        return { status: "error", message: "โหลดข้อมูล user ไม่ได้: " + err.message };
       });
   }
 
   document.getElementById("kaizenForm").addEventListener("submit", async function(e) {
     e.preventDefault();
     console.log('Form submitted');
+    
+    // เช็คว่าปุ่มถูก disable หรือไม่
+    if (document.getElementById("submitBtn").disabled) {
+      showError("กรุณาลงทะเบียนก่อนใช้งาน");
+      return;
+    }
+    
     showLoading();
 
     try {
@@ -200,24 +207,29 @@
       console.log('Sending data:', data);
 
       // ลองใช้ fetch แบบปกติก่อน
-      const response = await fetch("https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
+      try {
+        const response = await fetch("https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Response:', result);
-        
-        if (result.status === "success") {
-          showSuccess(result.jobId || "AUTO");
+        if (response.ok) {
+          const result = await response.json();
+          console.log('Response:', result);
+          
+          if (result.status === "success") {
+            showSuccess(result.jobId || "AUTO");
+          } else {
+            showError(result.message || "เกิดข้อผิดพลาด");
+          }
         } else {
-          showError(result.message || "เกิดข้อผิดพลาด");
+          throw new Error(`HTTP ${response.status}`);
         }
-      } else {
+      } catch (fetchError) {
         // ถ้า fetch ปกติไม่ได้ ลอง no-cors
-        console.log('Normal fetch failed, trying no-cors');
+        console.log('Normal fetch failed, trying no-cors:', fetchError.message);
+        
         await fetch("https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec", {
           method: "POST",
           mode: "no-cors",
@@ -241,7 +253,7 @@
       console.log('LIFF initialized');
       if (!liff.isLoggedIn()) {
         console.log('Not logged in, redirecting...');
-        liff.login();
+        return liff.login();
       } else {
         return liff.getProfile();
       }
@@ -258,26 +270,38 @@
       }
     })
     .then(data => {
+      // เช็คว่า data มีค่าและมี status
       if (data && data.status === "success") {
         console.log('Loading user data into form');
         document.getElementById("department").value = data.department || "";
-        document.getElementById("reporterName").value = data.reporterName || displayName;
+        document.getElementById("reporterName").value = data.reporterName || displayName || "";
         document.getElementById("empCode").value = data.empCode || "";
+        
+        // เปิดใช้งานปุ่มส่ง
+        document.getElementById("submitBtn").disabled = false;
       } else {
-        console.log('User data not found or error');
-        showError(data?.message || "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน")
-          .then(() => {
-            // ปิดหน้าต่างหลังจากกด OK
-            if (liff.isInClient()) {
-              liff.closeWindow();
-            }
-          });
-        document.getElementById("submitBtn").disabled = true; // ปิดปุ่มส่ง
+        // กรณีไม่พบ user หรือ error
+        console.log('User data not found or error:', data);
+        const errorMsg = (data && data.message) ? data.message : "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน";
+        
+        showError(errorMsg).then(() => {
+          // ปิดหน้าต่างหลังจากกด OK
+          if (liff.isInClient()) {
+            liff.closeWindow();
+          }
+        });
+        
+        // ปิดปุ่มส่งข้อมูล
+        document.getElementById("submitBtn").disabled = true;
       }
     })
     .catch(err => {
       console.error('LIFF error:', err);
-      showError('เกิดข้อผิดพลาด: ' + err.message);
+      showError('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message).then(() => {
+        if (liff.isInClient()) {
+          liff.closeWindow();
+        }
+      });
     });
 </script>
 
