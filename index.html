@@ -152,18 +152,18 @@
     };
 
     fetch("https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec", {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(res => {
-      if (res.status === "success") showSuccess(res.jobId);
-      else showError(res.message || "เกิดข้อผิดพลาด");
-    })
-    .catch(err => showError(err));
-  });
+  method: "POST",
+  mode: "no-cors",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(data)
+})
+.then(() => {
+  // ถ้า fetch ผ่าน ถือว่าสำเร็จเลย เพราะ no-cors อ่าน response ไม่ได้
+  showSuccess("AUTO");
+})
+.catch(err => {
+  showError("ส่งข้อมูลไม่สำเร็จ: " + err);
+});
 
   liff.init({ liffId: "2006299650-2BbWbnQl" })
     .then(() => {
