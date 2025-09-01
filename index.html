@@ -271,35 +271,39 @@
       }
     })
     .then(data => {
-      // เช็คว่า data มีค่าและมี status
-      if (data && data.status === "success") {
-        console.log('Loading user data into form');
-        document.getElementById("department").value = data.department || "";
-        document.getElementById("reporterName").value = data.reporterName || displayName || "";
-        document.getElementById("empCode").value = data.empCode || "";
-        
-        // เปิดใช้งานปุ่มส่ง
-        document.getElementById("submitBtn").disabled = false;
-      } else {
-        // กรณีไม่พบ user หรือ error
-        console.log('User data not found or error:', data);
-        const errorMsg = (data && data.message) ? data.message : "ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน";
-        
-        showError(errorMsg).then(() => {
-          // ปิดหน้าต่างหลังจากกด OK
-          if (liff.isInClient()) {
-            liff.closeWindow();
-          }
-        });
-        
-        // ปิดปุ่มส่งข้อมูล
-        document.getElementById("submitBtn").disabled = true;
-      }
-    })
+  if (data && data.status === "success") {
+    console.log('Loading user data into form');
+    document.getElementById("department").value = data.department || "";
+    document.getElementById("reporterName").value = data.reporterName || displayName || "";
+    document.getElementById("empCode").value = data.empCode || "";
+    
+    // เปิดใช้งานปุ่มส่ง
+    document.getElementById("submitBtn").disabled = false;
+  } else {
+    // กรณีไม่พบ user หรือ error
+    console.log('User data not found or error:', data);
+    const errorMsg = (data && data.message) ? data.message : "ไม่พบข้อมูลผู้ใช้ กรุณากรอกเอง";
+
+    // แจ้งเตือน แต่ไม่ปิด LIFF
+    showError(errorMsg);
+
+    // เคลียร์ค่าเดิม แล้วให้ผู้ใช้กรอกเองได้
+    document.getElementById("department").removeAttribute("readonly");
+    document.getElementById("reporterName").value = displayName || "";
+    document.getElementById("reporterName").removeAttribute("readonly");
+    document.getElementById("empCode").removeAttribute("readonly");
+
+    // เปิดใช้งานปุ่มส่ง
+    document.getElementById("submitBtn").disabled = false;
+  }
+})
+
     .catch(err => {
       console.error('LIFF error:', err);
       showError('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message).then(() => {
-        if (liff.isInClient())
+        if (liff.isInClient()) {
+          liff.closeWindow();
+        }
       });
     });
 </script>
