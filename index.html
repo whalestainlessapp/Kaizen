@@ -272,28 +272,33 @@
     })
     .then(data => {
   if (data && data.status === "success") {
+    // ✅ โหลดข้อมูล user สำเร็จ
     console.log('Loading user data into form');
     document.getElementById("department").value = data.department || "";
     document.getElementById("reporterName").value = data.reporterName || displayName || "";
     document.getElementById("empCode").value = data.empCode || "";
-    
-    // เปิดใช้งานปุ่มส่ง
     document.getElementById("submitBtn").disabled = false;
-  } else {
-    // กรณีไม่พบ user หรือ error
-    console.log('User data not found or error:', data);
-    const errorMsg = (data && data.message) ? data.message : "ไม่พบข้อมูลผู้ใช้ กรุณากรอกเอง";
 
-    // แจ้งเตือน แต่ไม่ปิด LIFF
+  } else if (data && data.status === "notfound") {
+    // ❌ ไม่เจอ user ในระบบ (ยังไม่เคยลงทะเบียน)
+    showError("ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน").then(() => {
+      if (liff.isInClient()) {
+        liff.closeWindow();
+      }
+    });
+    document.getElementById("submitBtn").disabled = true;
+
+  } else {
+    // ⚠️ มีการลงทะเบียนแล้ว แต่ fetch error (โหลดข้อมูลไม่ได้)
+    console.log('Fetch error or unknown data:', data);
+    const errorMsg = (data && data.message) ? data.message : "โหลดข้อมูลไม่สำเร็จ กรุณากรอกเอง";
     showError(errorMsg);
 
-    // เคลียร์ค่าเดิม แล้วให้ผู้ใช้กรอกเองได้
+    // เปิดให้แก้ไขเอง
     document.getElementById("department").removeAttribute("readonly");
     document.getElementById("reporterName").value = displayName || "";
     document.getElementById("reporterName").removeAttribute("readonly");
     document.getElementById("empCode").removeAttribute("readonly");
-
-    // เปิดใช้งานปุ่มส่ง
     document.getElementById("submitBtn").disabled = false;
   }
 })
