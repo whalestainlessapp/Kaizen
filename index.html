@@ -86,6 +86,7 @@
 
 <script>
   let userId, displayName, pictureUrl;
+  let isUserRegistered = false; // เพิ่มตัวแปรเก็บสถานะการลงทะเบียน
 
   // ตั้งค่าวันที่ปัจจุบัน
   window.addEventListener("DOMContentLoaded", () => {
@@ -142,8 +143,8 @@
       })
       .catch(err => { 
         console.error('Fetch error:', err); 
-        // ไม่ต้อง showError ที่นี่ เพราะจะ handle ที่ .then() ข้างล่าง
-        return { status: "error", message: "โหลดข้อมูล user ไม่ได้: " + err.message };
+        // คืนค่า object ที่ระบุว่า network error
+        return { status: "network_error", message: "เกิดข้อผิดพลาดในการเชื่อมต่อ: " + err.message };
       });
   }
 
@@ -151,9 +152,19 @@
     e.preventDefault();
     console.log('Form submitted');
     
-    // เช็คว่าปุ่มถูก disable หรือไม่
-    if (document.getElementById("submitBtn").disabled) {
+    // เช็คสถานะการลงทะเบียน
+    if (!isUserRegistered) {
       showError("กรุณาลงทะเบียนก่อนใช้งาน");
+      return;
+    }
+    
+    // เช็คข้อมูลจำเป็น
+    const department = document.getElementById("department").value.trim();
+    const reporterName = document.getElementById("reporterName").value.trim();
+    const empCode = document.getElementById("empCode").value.trim();
+    
+    if (!department || !reporterName || !empCode) {
+      showError("กรุณากรอกข้อมูลให้ครบถ้วน (แผนก, ผู้แจ้ง, รหัสพนักงาน)");
       return;
     }
     
@@ -200,9 +211,9 @@
         userId: userId,
         displayName: displayName,
         pictureUrl: pictureUrl,
-        department: document.getElementById("department").value,
-        reporterName: document.getElementById("reporterName").value,
-        empCode: document.getElementById("empCode").value
+        department: department,
+        reporterName: reporterName,
+        empCode: empCode
       };
 
       console.log('Sending data:', data);
@@ -271,38 +282,112 @@
       }
     })
     .then(data => {
-  if (data && data.status === "success") {
-    // ✅ โหลดข้อมูล user สำเร็จ
-    console.log('Loading user data into form');
-    document.getElementById("department").value = data.department || "";
-    document.getElementById("reporterName").value = data.reporterName || displayName || "";
-    document.getElementById("empCode").value = data.empCode || "";
-    document.getElementById("submitBtn").disabled = false;
+      console.log('Processing user data:', data);
+      
+      if (data && data.status === "success") {
+        // ✅ โหลดข้อมูล user สำเร็จ - ลงทะเบียนแล้ว
+        console.log('User registered successfully');
+        document.getElementById("department").value = data.department || "";
+        document.getElementById("reporterName").value = data.reporterName || displayName || "";
+        document.getElementById("empCode").value = data.empCode || "";
+        
+        isUserRegistered = true;
+        document.getElementById("submitBtn").disabled = false;
 
-  } else if (data && data.status === "notfound") {
-    // ❌ ไม่เจอ user ในระบบ (ยังไม่เคยลงทะเบียน)
-    showError("ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน").then(() => {
-      if (liff.isInClient()) {
-        liff.closeWindow();
+      } else if (data && data.status === "notfound") {
+        // ❌ ไม่เจอ user ในระบบ (ยังไม่เคยลงทะเบียน)
+        console.log('User not found - not registered');
+        isUserRegistered = false;
+        document.getElementById("submitBtn").disabled = true;
+        
+        showError("ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน").then(() => {
+          if (liff.isInClient()) {
+            liff.closeWindow();
+          }
+        });
+
+      } else if (data && data.status === "network_error") {
+        // ⚠️ Network error - ให้กรอกข้อมูลเอง แต่ต้องเช็คว่าลงทะเบียนหรือไม่
+        console.log('Network error occurred');
+        
+        // ลอง fetch ซ้ำอีกครั้งเพื่อยืนยัน
+        setTimeout(() => {
+          console.log('Retrying user data fetch...');
+          fetchUserData(userId).then(retryData => {
+            if (retryData && retryData.status === "success") {
+              // ลงทะเบียนแล้ว แต่ fetch ครั้งแรก error
+              console.log('Retry successful - user is registered');
+              document.getElementById("department").value = retryData.department || "";
+              document.getElementById("reporterName").value = retryData.reporterName || displayName || "";
+              document.getElementById("empCode").value = retryData.empCode || "";
+              
+              isUserRegistered = true;
+              document.getElementById("submitBtn").disabled = false;
+              
+              Swal.fire({
+                title: 'แจ้งเตือน',
+                text: 'โหลดข้อมูลผู้ใช้สำเร็จ สามารถใช้งานได้แล้ว',
+                icon: 'info',
+                confirmButtonText: 'ตกลง'
+              });
+              
+            } else if (retryData && retryData.status === "notfound") {
+              // ยืนยันแล้วว่าไม่ได้ลงทะเบียน
+              console.log('Retry confirmed - user not registered');
+              isUserRegistered = false;
+              document.getElementById("submitBtn").disabled = true;
+              
+              showError("ไม่พบผู้ใช้ กรุณาลงทะเบียนก่อน").then(() => {
+                if (liff.isInClient()) {
+                  liff.closeWindow();
+                }
+              });
+              
+            } else {
+              // ยัง error อยู่ - ให้กรอกเอง
+              console.log('Retry still failed - allow manual input');
+              
+              Swal.fire({
+                title: 'แจ้งเตือน',
+                text: 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ กรุณากรอกข้อมูลด้วยตนเอง',
+                icon: 'warning',
+                confirmButtonText: 'ตกลง'
+              });
+              
+              // เปิดให้แก้ไขเอง
+              document.getElementById("department").removeAttribute("readonly");
+              document.getElementById("reporterName").value = displayName || "";
+              document.getElementById("reporterName").removeAttribute("readonly");
+              document.getElementById("empCode").removeAttribute("readonly");
+              
+              // สมมติว่าลงทะเบียนแล้ว (เพราะถ้าไม่ได้ลงทะเบียนก็จะได้ notfound)
+              isUserRegistered = true;
+              document.getElementById("submitBtn").disabled = false;
+            }
+          });
+        }, 2000); // รอ 2 วินาที
+
+      } else {
+        // กรณีอื่นๆ ที่ไม่คาดคิด
+        console.log('Unexpected data:', data);
+        
+        Swal.fire({
+          title: 'แจ้งเตือน',
+          text: 'โหลดข้อมูลผู้ใช้ไม่สำเร็จ กรุณากรอกข้อมูลด้วยตนเอง',
+          icon: 'warning',
+          confirmButtonText: 'ตกลง'
+        });
+        
+        // เปิดให้แก้ไขเอง
+        document.getElementById("department").removeAttribute("readonly");
+        document.getElementById("reporterName").value = displayName || "";
+        document.getElementById("reporterName").removeAttribute("readonly");
+        document.getElementById("empCode").removeAttribute("readonly");
+        
+        isUserRegistered = true;
+        document.getElementById("submitBtn").disabled = false;
       }
-    });
-    document.getElementById("submitBtn").disabled = true;
-
-  } else {
-    // ⚠️ มีการลงทะเบียนแล้ว แต่ fetch error (โหลดข้อมูลไม่ได้)
-    console.log('Fetch error or unknown data:', data);
-    const errorMsg = (data && data.message) ? data.message : "โหลดข้อมูลไม่สำเร็จ กรุณากรอกเอง";
-    showError(errorMsg);
-
-    // เปิดให้แก้ไขเอง
-    document.getElementById("department").removeAttribute("readonly");
-    document.getElementById("reporterName").value = displayName || "";
-    document.getElementById("reporterName").removeAttribute("readonly");
-    document.getElementById("empCode").removeAttribute("readonly");
-    document.getElementById("submitBtn").disabled = false;
-  }
-})
-
+    })
     .catch(err => {
       console.error('LIFF error:', err);
       showError('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message).then(() => {
