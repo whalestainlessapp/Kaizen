@@ -129,7 +129,11 @@
 
   function fetchUserData(uid) {
     console.log('Fetching user data for UID:', uid);
-    return fetch(`https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec?userId=${uid}`)
+    return fetch(`https://script.google.com/macros/s/AKfycbyOHFF0q5Ew0zWfHX7zJxOmJ6xTPP0HOdax9jo0nivQZbKC7tVMePZkaYVaJnlL-pTM/exec?userId=${uid}`, {
+      method: 'GET',
+      mode: 'cors', // ลอง cors ก่อน
+      cache: 'no-cache'
+    })
       .then(res => {
         console.log('Response status:', res.status);
         if (!res.ok) {
@@ -143,7 +147,7 @@
       })
       .catch(err => { 
         console.error('Fetch error:', err); 
-        // คืนค่า object ที่ระบุว่า network error
+        // คืนค่า object ที่ระบุว่า network error - ไม่จำเป็นต้องแยก status
         return { status: "network_error", message: "เกิดข้อผิดพลาดในการเชื่อมต่อ: " + err.message };
       });
   }
@@ -391,7 +395,9 @@
     .catch(err => {
       console.error('LIFF error:', err);
       showError('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message).then(() => {
-        if (liff.isInClient()) 
+        if (liff.isInClient()) {
+          liff.closeWindow();
+        }
       });
     });
 </script>
