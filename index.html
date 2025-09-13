@@ -396,7 +396,7 @@
       console.error('LIFF error:', err);
       showError('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message).then(() => {
         if (liff.isInClient()) {
-          liff.closeWindow();
+    
         }
       });
     });
